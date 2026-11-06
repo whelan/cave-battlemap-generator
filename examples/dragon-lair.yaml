@@ -1,0 +1,78 @@
+# A red dragon's lair with a prison wing (D1–D7). Render: cave-map examples/dragon-lair.yaml --dm
+# D1 entry tunnel (trap) · D2 guard post · D3 prison, four cages, secret way west · D4 lava gallery (trap)
+# D5 the hoard and the scorched sleeping hollow · D6 flight shaft · D7 bone pit
+name: Dragon Lair
+size: [56, 48]
+seed: 41
+px: 100
+darkness: 0.7
+damp: 0.25
+stalagmites: 12
+cracks: 6
+puddles: 0
+chambers:
+  - {id: entry, at: [12, 41], r: [3.5, 3], label: D1}
+  - {id: guard, at: [15, 33], r: [5, 3.5], label: D2}
+  - {id: prison, at: [10, 20], r: [7, 6], label: D3}
+  - {id: hall, at: [29, 32], r: [10, 6], label: D4}
+  - {id: hoard, at: [38, 15], r: [11, 8], label: D5}
+  - {id: larder, at: [48, 37], r: [5, 4], label: D7}
+passages:
+  - {from: entry, to: south, width: 3}
+  - {from: entry, to: guard, width: 3}
+  - {path: [guard, [11, 27], prison], width: 3}
+  - {path: [guard, [21, 33], hall], width: 3.5}
+  - {path: [hall, [33, 24], hoard], width: 8}
+  - {path: [hall, [41, 35], larder], width: 3}
+  - {path: [hoard, [34, 4], north], width: 7, label: D6}
+  - {path: [[4.5, 17.5], [1.5, 12], west], width: 2, secret: true, label: S}
+pillars:
+  - {at: [24, 33.6], r: [1.6, 1.1], rot: 20}
+  - {at: [30, 15], r: [1.6, 1.2]}
+  - {at: [45, 20], r: [1.4, 1]}
+chasms:
+  - {at: [50.4, 38.4], r: [2.2, 1.6], rot: 10}
+lava:
+  - {at: [44.6, 10.6], r: [2.6, 2], rot: 25}
+  - {path: [[44, 12.5], [42, 20], [38.5, 26]], width: 2.4}
+  - {path: [[35.5, 30.5], [31.5, 35.5], [28, 37.5]], width: 2.2}
+features:
+  - {kind: trap, at: [11, 45.5], label: T}
+  - {kind: trap, at: [33.5, 25.5], label: T}
+  - {kind: brazier, at: [12, 31.5]}
+  - {kind: brazier, at: [18.5, 34.5]}
+  - {kind: crate, at: [18.5, 31], rot: 10}
+  - {kind: crate, at: [19.4, 31.9], rot: -15}
+  - {kind: bedroll, at: [11.6, 34.6], rot: 80}
+  - {kind: bedroll, at: [14.2, 35.8], rot: 95}
+  - {kind: spear, at: [16.5, 31], rot: 20, r: 0.7}
+  - {kind: spear, at: [17, 30.4], rot: 35, r: 0.7}
+  - {kind: cage, at: [7, 16.5], r: 1.3}
+  - {kind: cage, at: [12.5, 15.5], r: 1.3}
+  - {kind: cage, at: [7, 23.5], r: 1.3}
+  - {kind: cage, at: [13, 23.5], r: 1.3}
+  - {kind: brazier, at: [10, 19.8]}
+  - {kind: corpse, at: [4.2, 20.5], rot: 270, chained: true}
+  - {kind: chains, at: [6, 15.8], to: [5.2, 14.8]}
+  - {kind: chains, at: [6, 24.2], to: [5, 25]}
+  - {kind: bones, at: [14.5, 20], r: 1, n: 5}
+  - {kind: skull, at: [15.5, 18.5], rot: 40}
+  - {kind: scorch, at: [24, 30], r: 1.6}
+  - {kind: scorch, at: [32, 29], r: 1.2}
+  - {kind: charred, at: [27, 35], r: 1.2, n: 6}
+  - {kind: treasure, at: [36, 14], r: 3}
+  - {kind: treasure, at: [41, 18.5], r: 2.2}
+  - {kind: treasure, at: [31.5, 11.5], r: 1.8}
+  - {kind: scorch, at: [39, 9.5], r: 3.2, label: hollow}
+  - {kind: charred, at: [39, 9.5], r: 3.6, n: 18}
+  - {kind: claws, at: [44, 8], rot: 30, r: 1.4}
+  - {kind: claws, at: [29, 18], rot: -20, r: 1.2}
+  - {kind: charred, at: [50.4, 38.4], r: 1.4, n: 14}
+  - {kind: carcass, at: [46, 35], rot: 200, r: 1}
+  - {kind: blood, at: [45.5, 36], r: 0.9}
+  - {kind: scorch, at: [47, 39.5], r: 1}
+glow:
+  - {at: [31, 10.5], n: 6, color: red}
+  - {at: [46.4, 19.5], n: 6, color: red}
+  - {at: [34, 7.5], n: 5, color: red}
+  - {at: [21.5, 29], n: 5, color: red}
