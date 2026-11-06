@@ -114,7 +114,7 @@ function radii(r, def) {
 
 function normalize(spec) {
   const errors = [], warnings = [];
-  const s = { chambers: [], passages: [], pillars: [], pools: [], features: [], exits: [] };
+  const s = { chambers: [], passages: [], pillars: [], pools: [], lava: [], features: [], exits: [] };
   if (!spec || typeof spec !== 'object') return { s, errors: ['spec must be a JSON object'], warnings };
   s.name = typeof spec.name === 'string' && spec.name ? spec.name : 'Cave';
   const size = spec.size;
@@ -188,6 +188,19 @@ function normalize(spec) {
       s[key].push({ at: q.at, r, rot: ((q.rot || 0) * Math.PI) / 180, where: w });
     });
   }
+
+  (spec.lava || []).forEach((q, i) => {
+    const w = `lava[${i}]`;
+    const width = typeof q?.width === 'number' && q.width > 0 ? q.width : 1.5;
+    if (q && Array.isArray(q.path)) {
+      if (q.path.length < 2 || !q.path.every(isPt)) return errors.push(`${w}: "path" must be 2+ [x, y] points`);
+      return s.lava.push({ path: q.path, width, where: w });
+    }
+    if (!q || !isPt(q.at)) return errors.push(`${w}: needs "at" or a "path"`);
+    const r = radii(q.r, 1.5);
+    if (!r) return errors.push(`${w}: "r" must be a number or [rx, ry] > 0`);
+    s.lava.push({ at: q.at, r, rot: ((q.rot || 0) * Math.PI) / 180, where: w });
+  });
 
   (spec.features || []).forEach((f, i) => {
     const w = `features[${i}]`;
@@ -458,11 +471,32 @@ function buildModel(spec) {
 
 // Pools: own field on a fine grid; returns {F, at} or null.
 function poolField(s) {
-  if (!s.pools.length) return null;
-  const n = makeFbm(s.W, s.H, 1.0, 2, s.seed, 7);
+  return liquidField(s, s.pools, 7);
+}
+
+// Lava: ellipses ("at"/"r") or flows along a "path" of points with a width.
+function lavaField(s) {
+  const shapes = s.lava.map((l) => {
+    if (!l.path) return l;
+    const rad = l.width / 2;
+    const xs = l.path.map((q) => q[0]), ys = l.path.map((q) => q[1]);
+    const at = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    const ext = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) / 2 + rad;
+    return { at, r: [ext, ext], sd: (x, y) => {
+      let d = Infinity;
+      for (let k = 1; k < l.path.length; k++) d = Math.min(d, sdCapsule(x, y, l.path[k - 1], l.path[k], rad * (0.85 + 0.15 * Math.sin(k * 2.1))));
+      return d;
+    } };
+  });
+  return liquidField(s, shapes, 11);
+}
+
+function liquidField(s, shapes, salt) {
+  if (!shapes.length) return null;
+  const n = makeFbm(s.W, s.H, 1.0, 2, s.seed, salt);
   const res = 8;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const p of s.pools) {
+  for (const p of shapes) {
     const m = Math.max(p.r[0], p.r[1]) + 1;
     x0 = Math.min(x0, p.at[0] - m);
     y0 = Math.min(y0, p.at[1] - m);
@@ -477,7 +511,7 @@ function poolField(s) {
     for (let i = 0; i < nx; i++) {
       const x = x0 + i / res, y = y0 + j / res;
       let d = Infinity;
-      for (const p of s.pools) d = Math.min(d, sdEllipse(x, y, p.at, p.r, p.rot));
+      for (const p of shapes) d = Math.min(d, p.sd ? p.sd(x, y) : sdEllipse(x, y, p.at, p.r, p.rot));
       d += 0.25 * n(x, y);
       if (i === 0 || j === 0 || i === nx - 1 || j === ny - 1) d = Math.max(d, 0.5);
       g[j * nx + i] = d;
@@ -709,7 +743,31 @@ export function renderCave(spec, opts = {}) {
       if (dd) poolOut += `<path d="${dd}" stroke-width="${lw(width)}"/>`;
     }
   }
-  const inPool = (x, y, m = 0) => (P ? P.at(x, y) < m : false);
+  // --- lava: outline, inner glow line, cooled crust plates
+  const LV = lavaField(s);
+  let lavaD = '', lavaInD = '', crustD = '';
+  if (LV) {
+    for (const c0 of contours(LV, 0)) {
+      const c = chaikin(chaikin(simplify(c0, 0.02)));
+      if (c.pts.length > 3) lavaD += polyD(c.pts, true, S);
+    }
+    for (const c0 of contours(LV, -0.22)) {
+      const c = chaikin(chaikin(simplify(c0, 0.02)));
+      if (c.pts.length > 3) lavaInD += polyD(c.pts, true, S);
+    }
+    const RL = rng(seed, 'crust');
+    const cs = spatial(0.5);
+    for (let k = 0; k < 4000; k++) {
+      const x = RL() * W, y = RL() * H;
+      const d = LV.at(x, y);
+      if (d > -0.12) continue;
+      const r = Math.min(0.08 + RL() * 0.22, -d * 0.8);
+      if (r < 0.06 || cs.hit(x, y, r + 0.12, 0)) continue;
+      cs.add(x, y, r);
+      crustD += blobD(stonePts(x, y, r, 6 + Math.floor(RL() * 3), RL, 0.45), S);
+    }
+  }
+  const inPool = (x, y, m = 0) => (P ? P.at(x, y) < m : false) || (LV ? LV.at(x, y) < m : false);
 
   // --- floor details: rubble at the wall foot, loose stones, cracks
   const occ = spatial(0.5);
@@ -841,7 +899,7 @@ export function renderCave(spec, opts = {}) {
   }
 
   if ((opts.style ?? s.style) === 'color') {
-    return colorSvg({ s, F, S, lw, floorD, wallD, loops, stoneD, crackD, dotD, poolFill, poolOut, featOut, dmOut, gridOut, used, dm });
+    return colorSvg({ lavaD, lavaInD, crustD, s, F, S, lw, floorD, wallD, loops, stoneD, crackD, dotD, poolFill, poolOut, featOut, dmOut, gridOut, used, dm });
   }
 
   // --- assemble
@@ -866,8 +924,12 @@ export function renderCave(spec, opts = {}) {
     o.push(`<g id="pools" clip-path="url(#cm-floor)" fill="none" stroke="${INK}" stroke-linecap="round" stroke-linejoin="round">`);
     o.push(`<path d="${poolFill}" fill="#fff"/>${poolOut}</g>`);
   }
+  if (lavaD) {
+    o.push(`<g id="lava" clip-path="url(#cm-floor)" stroke="${INK}" stroke-linecap="round" stroke-linejoin="round">`);
+    o.push(`<path d="${lavaD}" fill="#fff" stroke-width="${lw(2.4)}"/><path d="${lavaInD}" fill="none" stroke-width="${lw(1)}" stroke-dasharray="${lw(6)} ${lw(5)}"/><path d="${crustD}" fill="${INK}" stroke="none"/></g>`);
+  }
   if (gridOut) o.push(gridOut);
-  o.push(`<path id="wall" d="${wallD}" fill="${INK}" fill-rule="nonzero"/>`);
+  o.push(`<path id="wall\" d="${wallD}" fill="${INK}" fill-rule="nonzero"/>`);
   if (featOut) o.push(`<g id="features">${featOut}</g>`);
   if (dmOut) o.push(`<g id="dm">${dmOut}</g>`);
   o.push(`</svg>`);
@@ -877,10 +939,11 @@ export function renderCave(spec, opts = {}) {
 // --- painted colour style: dark rock, lit grey floor, soft shadows and warm light
 const PAL = {
   void: '#16171c', haze: '#4a4846', floor: '#77726c', floorDark: '#5d5955', wall: '#1d1b1a',
-  contour: '#2a2725', stone: '#8d8984', stoneLine: '#2e2b29', water: '#3d5866', waterLine: '#a9c3cc',
+  contour: '#2a2725', lava: '#f2611c', lavaHot: '#ffc24a', lavaGlow: '#ff7a1f', lavaEdge: '#7a2a0c', crust: '#5a1d0d', stone: '#8d8984', stoneLine: '#2e2b29', water: '#3d5866', waterLine: '#a9c3cc',
   asset: '#a8987f', assetLine: '#211e1b', light: '#ffb45a',
 };
-const LIGHTS = { campfire: 3.2, torch: 2.2, altar: 1.4 };
+const LIGHTS = { campfire: 3.2, torch: 2.2, altar: 1.4, brazier: 2.8, crystals: [1.6, 'red'], cauldron: [1.2, 'green'] };
+const LIGHT_COL = { red: '#ff4848', green: '#7dff6a' };
 
 function colorSvg(c) {
   const { s, F, S, lw, floorD, wallD, loops, dm } = c;
@@ -906,13 +969,14 @@ function colorSvg(c) {
   const R = rng(seed, 'light');
   for (const f of s.features) {
     if (f.dmOnly && !dm) continue;
-    const r = LIGHTS[f.kind];
-    if (!r) continue;
+    const L = LIGHTS[f.kind];
+    if (!L) continue;
+    const [r, col] = Array.isArray(L) ? L : [L, ''];
     const rr = r * f.scale * S * (0.9 + 0.2 * R());
-    lightOut += `<circle cx="${f1(f.at[0] * S)}" cy="${f1(f.at[1] * S)}" r="${f1(rr)}" fill="url(#cm-light)"/>`;
+    lightOut += `<circle cx="${f1(f.at[0] * S)}" cy="${f1(f.at[1] * S)}" r="${f1(rr)}" fill="url(#cm-light${col && '-' + col})"/>`;
   }
   const tint = (svg) => svg.replace(/#fff\b|#ffffff\b|white/gi, PAL.asset).replace(/#000\b|#000000\b|black/gi, PAL.assetLine);
-  const defs = [...c.used].map((k) => `<g id="cm-${k}">${tint(ASSETS[k].svg)}</g>`).join('');
+  const defs = [...c.used].map((k) => `<g id="cm-${k}">${ASSETS[k].csvg || tint(ASSETS[k].svg)}</g>`).join('');
   const blur = (id, sd) => `<filter id="${id}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${f1(sd)}"/></filter>`;
   const o = [];
   o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f1(w)} ${f1(h)}" width="${f1(w)}" height="${f1(h)}">`);
@@ -921,7 +985,9 @@ function colorSvg(c) {
   o.push(blur('cm-haze', 0.55 * S) + blur('cm-shade', 0.22 * S) + blur('cm-soft', 0.04 * S));
   o.push(`<filter id="cm-mottle" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${f2(0.7 / S)}" numOctaves="5" seed="${seed % 1000}"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 0.95"/></filter>`);
   o.push(`<filter id="cm-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${f2(9 / S)}" numOctaves="2" seed="${(seed + 7) % 1000}"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.2 1.2"/></filter>`);
+  o.push(`<filter id="cm-blotch" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${f2(2.2 / S)}" numOctaves="3" seed="${(seed + 3) % 1000}"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 0.78  0 0 0 0 0.32  0 0 0 -3 1.6"/><feGaussianBlur stdDeviation="${f1(0.03 * S)}"/></filter>`);
   o.push(`<radialGradient id="cm-light"><stop offset="0" stop-color="${PAL.light}" stop-opacity="0.75"/><stop offset="0.45" stop-color="${PAL.light}" stop-opacity="0.3"/><stop offset="1" stop-color="${PAL.light}" stop-opacity="0"/></radialGradient>`);
+  for (const [k, col] of Object.entries(LIGHT_COL)) o.push(`<radialGradient id="cm-light-${k}"><stop offset="0" stop-color="${col}" stop-opacity="0.6"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>`);
   o.push(`${defs}</defs>`);
   o.push(`<rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.void}"/>`);
   // soft lighter haze in the rock around the cave
@@ -943,6 +1009,15 @@ function colorSvg(c) {
     o.push(`<path d="${c.poolFill}" fill="none" stroke="#000" stroke-width="${f1(0.3 * S)}" filter="url(#cm-shade)" opacity="0.5"/>`);
     o.push(`<path d="${c.poolFill}" fill="${PAL.water}" opacity="0.95"/>`);
     o.push(`<g fill="none" stroke="${PAL.waterLine}" stroke-linecap="round" stroke-linejoin="round" opacity="0.6">${c.poolOut}</g>`);
+  }
+  if (c.lavaD) {
+    o.push(`<path d="${c.lavaD}" fill="${PAL.lavaGlow}" stroke="${PAL.lavaGlow}" stroke-width="${f1(1.6 * S)}" stroke-linejoin="round" filter="url(#cm-haze)" opacity="0.55" style="mix-blend-mode:screen"/>`);
+    o.push(`<clipPath id="cm-lava"><path d="${c.lavaD}"/></clipPath>`);
+    o.push(`<g clip-path="url(#cm-lava)"><rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.lava}"/>`);
+    o.push(`<rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.lavaHot}" filter="url(#cm-blotch)"/>`);
+    o.push(`<path d="${c.lavaInD}" fill="none" stroke="${PAL.lavaHot}" stroke-width="${f1(0.12 * S)}" filter="url(#cm-soft)" opacity="0.7"/>`);
+    o.push(`<path d="${c.crustD}" fill="${PAL.crust}" stroke="${PAL.lavaEdge}" stroke-width="${lw(2)}" filter="url(#cm-soft)"/></g>`);
+    o.push(`<path d="${c.lavaD}" fill="none" stroke="${PAL.lavaEdge}" stroke-width="${lw(2)}" opacity="0.8"/>`);
   }
   o.push(`</g>`);
   if (c.gridOut) o.push(c.gridOut.replace(`stroke="${INK}" stroke-opacity="0.25"`, `stroke="#000" stroke-opacity="0.3"`));
@@ -1121,6 +1196,102 @@ function stalagmiteSvg() {
   return g(ST(2.8), s);
 }
 
+// Newer props take a palette so the colour style can paint them properly.
+const INKP = { fill: '#fff', ink: '#000', gold: '#fff', gold2: '#fff', gem1: '#fff', gem2: '#fff', gem3: '#fff', hole: '#000', rim: '#fff', glow: '#fff', liquid: '#fff', wood: '#fff', bone: '#fff', metal: '#fff', ember: '#000' };
+const COLP = { fill: '#a8987f', ink: '#211e1b', gold: '#b8902c', gold2: '#f1d264', gem1: '#e2363a', gem2: '#3f7be0', gem3: '#3fbf6a', hole: '#050506', rim: '#4a4643', glow: '#ff5a5a', liquid: '#5ecf4a', wood: '#7a5634', bone: '#ddd3bd', metal: '#5b5e63', ember: '#ff7a1f' };
+const STP = (p, sw = 3) => `fill="${p.fill}" stroke="${p.ink}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"`;
+
+function hoardSvg(p) {
+  const r = rng('asset', 'hoard');
+  let s = `<path d="${blobD(stonePts(100, 104, 84, 14, r, 0.16), 1, f1)}" fill="${p.gold}" stroke="${p.ink}" stroke-width="3"/>`;
+  s += `<path d="${blobD(stonePts(98, 100, 50, 11, r, 0.2), 1, f1)}" fill="${p.gold2}" stroke="${p.ink}" stroke-width="1.6" opacity="0.9"/>`;
+  const gems = [p.gem1, p.gem2, p.gem3];
+  for (let i = 0; i < 70; i++) {
+    const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 74;
+    const x = 100 + Math.cos(a) * d, y = 104 + Math.sin(a) * d * 0.95;
+    if (i % 9 === 0) s += `<path d="M${f1(x)} ${f1(y - 6)}l5 6l-5 6l-5 -6z" fill="${gems[i % 3]}" stroke="${p.ink}" stroke-width="1.4"/>`;
+    else s += circ(x, y, 4 + r() * 2.5, ` fill="${p.gold2}" stroke="${p.ink}" stroke-width="1.3"`);
+  }
+  s += `<path d="M84 64h30l-4 18h-22z" fill="${p.gold}" stroke="${p.ink}" stroke-width="2.4"/>`; // goblet
+  return g('stroke-linejoin="round"', s);
+}
+
+function pitSvg(p) {
+  const r = rng('asset', 'pit');
+  let s = `<path d="${blobD(stonePts(100, 100, 88, 16, r, 0.12), 1, f1)}" fill="${p.rim}" stroke="${p.ink}" stroke-width="3.2"/>`;
+  s += `<path d="${blobD(stonePts(102, 100, 70, 14, r, 0.12), 1, f1)}" fill="${p.hole}" stroke="${p.ink}" stroke-width="2"/>`;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + r() * 0.3;
+    s += `<path d="M${f1(100 + Math.cos(a) * 74)} ${f1(100 + Math.sin(a) * 72)}L${f1(100 + Math.cos(a) * 86)} ${f1(100 + Math.sin(a) * 84)}" stroke="${p.ink}" stroke-width="1.6" fill="none"/>`;
+  }
+  return g('stroke-linecap="round"', s);
+}
+
+function crystalsSvg(p) {
+  const shard = (x, y, h, w, a) => {
+    const pts = [[-w, 0], [-w * 0.7, -h * 0.75], [0, -h], [w * 0.7, -h * 0.75], [w, 0], [0, w * 0.6]];
+    const c = Math.cos(a), sn = Math.sin(a);
+    const q = pts.map(([u, v]) => [x + u * c - v * sn, y + u * sn + v * c]);
+    const tip = q[2], base = [x - 0 * c - w * 0.6 * sn, y];
+    return `<path d="${polyD(q, true, 1)}"/><path d="M${f1(base[0])} ${f1(base[1])}L${f1(tip[0])} ${f1(tip[1])}" fill="none" stroke-width="1.4"/>`;
+  };
+  const s = shard(50, 62, 46, 11, -0.35) + shard(64, 66, 36, 9, 0.5) + shard(36, 70, 28, 8, -0.9) + shard(56, 76, 22, 7, 1.2) + shard(42, 60, 20, 6, 0.1);
+  return g(`fill="${p.glow}" stroke="${p.ink}" stroke-width="2.4" stroke-linejoin="round"`, s);
+}
+
+function skeletonSvg(p) {
+  const bn = (a, b, w = 6) => layered(bone(a[0], a[1], b[0], b[1], w), 2.2);
+  let s = bn([30, 50], [18, 92]) + bn([18, 92], [24, 124]) + bn([70, 50], [84, 90]) + bn([84, 90], [80, 120]);
+  s += bn([42, 132], [36, 168]) + bn([36, 168], [34, 194]) + bn([58, 132], [66, 166]) + bn([66, 166], [72, 192]);
+  s += '<path d="M50 40L50 120" fill="none" stroke-width="4"/><path d="M30 50L70 50" fill="none" stroke-width="4"/>';
+  for (let i = 0; i < 5; i++) s += `<path d="M50 ${56 + i * 11}Q${30 - i} ${60 + i * 11} ${32 + i * 2} ${70 + i * 11}M50 ${56 + i * 11}Q${70 + i} ${60 + i * 11} ${68 - i * 2} ${70 + i * 11}" fill="none" stroke-width="2.4"/>`;
+  s += '<path d="M34 122Q50 112 66 122L60 134H40Z"/>';
+  s += `<g transform="translate(25 2)">${skullSvg()}</g>`;
+  return g(ST(2.4), s).replace(/#fff\b/g, p.bone).replace(/#000\b/g, p.ink);
+}
+
+function spearsSvg(p) {
+  const spear = (x1, y1, x2, y2) => {
+    const a = Math.atan2(y2 - y1, x2 - x1), c = Math.cos(a), sn = Math.sin(a);
+    const hx = x2 - c * 16, hy = y2 - sn * 16;
+    return `<path d="M${x1} ${y1}L${f1(hx)} ${f1(hy)}" fill="none" stroke="${p.ink}" stroke-width="5"/><path d="M${x1} ${y1}L${f1(hx)} ${f1(hy)}" fill="none" stroke="${p.wood}" stroke-width="2.6"/>` +
+      `<path d="M${f1(x2)} ${f1(y2)}L${f1(hx - sn * 6)} ${f1(hy + c * 6)}L${f1(hx - c * 4)} ${f1(hy - sn * 4)}L${f1(hx + sn * 6)} ${f1(hy - c * 6)}Z" fill="${p.metal}" stroke="${p.ink}" stroke-width="2"/>`;
+  };
+  return g('stroke-linecap="round" stroke-linejoin="round"', spear(10, 86, 90, 18) + spear(14, 64, 92, 44));
+}
+
+function sackSvg(p) {
+  return g(STP({ ...p, fill: p.fill }, 3), `<path d="M30 40Q16 70 30 86Q50 96 70 86Q84 70 70 40Q60 32 50 34Q40 32 30 40Z"/><path d="M40 36Q50 20 60 36" fill="none"/><path d="M38 36Q50 42 62 36" fill="none" stroke-width="2"/>` +
+    `<path d="M36 58Q44 64 40 76M60 52Q66 64 62 80" fill="none" stroke-width="1.5"/>`);
+}
+
+function cauldronSvg(p) {
+  return g(`stroke="${p.ink}" stroke-linejoin="round" stroke-linecap="round"`,
+    [[50, 12], [16, 74], [84, 74]].map(([x, y]) => circ(x, y, 7, ` fill="${p.metal}" stroke-width="2"`)).join('') +
+    circ(50, 52, 38, ` fill="${p.metal}" stroke-width="3.2"`) + circ(50, 52, 30, ` fill="${p.liquid}" stroke-width="2"`) +
+    circ(42, 46, 4, ` fill="${p.fill}" stroke-width="1.4"`) + circ(58, 58, 3, ` fill="${p.fill}" stroke-width="1.4"`) + circ(54, 42, 2, ` fill="${p.fill}" stroke-width="1.2"`));
+}
+
+function brazierSvg(p) {
+  let s = [[0], [2.1], [4.2]].map(([a]) => `<path d="M${f1(50 + Math.cos(a) * 30)} ${f1(50 + Math.sin(a) * 30)}L${f1(50 + Math.cos(a) * 44)} ${f1(50 + Math.sin(a) * 44)}" stroke-width="6" fill="none"/>`).join('');
+  s += circ(50, 50, 32, ` fill="${p.metal}" stroke-width="3"`) + circ(50, 50, 24, ` fill="${p.ink}" stroke-width="1.6"`);
+  const r = rng('asset', 'brazier');
+  for (let i = 0; i < 9; i++) s += `<path d="${blobD(stonePts(36 + r() * 28, 36 + r() * 28, 5 + r() * 3, 5, r, 0.4), 1, f1)}" fill="${p.ember}" stroke-width="1"/>`;
+  s += `<path d="M50 30C42 40 42 54 50 62C58 54 58 40 50 30Z" fill="${p.gold2}" stroke-width="1.6"/>`;
+  return g(`stroke="${p.ink}" stroke-linejoin="round" stroke-linecap="round"`, s);
+}
+
+const PAINTED = {
+  hoard: { w: 2, h: 2, f: hoardSvg },
+  pit: { w: 2, h: 2, f: pitSvg },
+  crystals: { w: 1, h: 1, f: crystalsSvg },
+  skeleton: { w: 1, h: 2, f: skeletonSvg },
+  spears: { w: 1, h: 1, f: spearsSvg },
+  sack: { w: 1, h: 1, f: sackSvg },
+  cauldron: { w: 1, h: 1, f: cauldronSvg },
+  brazier: { w: 1, h: 1, f: brazierSvg },
+};
+
 export const ASSETS = {
   boulder: { w: 1, h: 1, svg: g(ST(3), blob(50, 52, 40, 9, 'boulder', 0.22) + line([[24, 44], [42, 36], [58, 42], [70, 34]]) + line([[42, 36], [46, 58], [40, 72]]) + line([[58, 42], [66, 62]]) +
     [[62, 70, 68, 78], [70, 66, 77, 73], [52, 74, 56, 82]].map(([a, b, c, d]) => line([[a, b], [c, d]])).join('').replace(/fill="none"/g, 'fill="none" stroke-width="1.6"')) },
@@ -1161,6 +1332,8 @@ export const ASSETS = {
   statue: { w: 1, h: 1, svg: g(ST(3), rect(12, 12, 76, 76, 2) + rect(20, 20, 60, 60, 0, ' stroke-width="1.6"') + line([[12, 12], [20, 20]]) + line([[88, 12], [80, 20]]) + line([[12, 88], [20, 80]]) + line([[88, 88], [80, 80]]) +
     rect(28, 42, 44, 18, 9) + '<path d="M36 60L38 70H62L64 60" stroke-width="2"/>' + circ(50, 49, 10) + '<path d="M44 46Q50 42 56 46" fill="none" stroke-width="1.4"/>') },
 };
+
+for (const [k, a] of Object.entries(PAINTED)) ASSETS[k] = { w: a.w, h: a.h, svg: a.f(INKP), csvg: a.f(COLP) };
 
 export function assetSvg(name) {
   const a = ASSETS[name];

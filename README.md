@@ -40,7 +40,7 @@ Units are grid cells (1 cell = 5 ft). A cave is a list of elliptical **chambers*
   "features": [{"kind": "campfire", "at": [4, 9]}, {"kind": "trap", "at": [5, 14], "label": "T"}] }
 ```
 
-Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md). Examples: [examples/small-cave.json](examples/small-cave.json), [examples/dragon-lair.json](examples/dragon-lair.json).
+Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md). Examples: [examples/small-cave.json](examples/small-cave.json), [examples/dragon-lair.json](examples/dragon-lair.json), [examples/lava-cave.json](examples/lava-cave.json) (lava + colour style).
 
 ## Use with an AI
 
@@ -51,7 +51,7 @@ Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md)
 
 ## Assets
 
-23 simple line-drawn props, each sized to the 5-ft grid: boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue. Use them as `features` in a spec, or export them with `--assets` for use in other tools.
+31 simple props, each sized to the 5-ft grid: boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue, hoard, pit, crystals, skeleton, spears, sack, cauldron, brazier. Campfires, torches, braziers, altars, crystals and cauldrons cast light in the colour style. Use them as `features` in a spec, or export them with `--assets` for use in other tools.
 
 ![Assets](docs/images/assets.png)
 

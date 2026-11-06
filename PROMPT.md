@@ -39,8 +39,10 @@ Field rules:
 - `chambers[]`: `id` (unique, lowercase), `at` centre, `r` [rx, ry] radii, `rot` degrees (optional), `label` (optional, DM only). The **first** chamber is the entrance chamber.
 - `passages[]`: either `{"from": id, "to": id-or-edge}` or `{"path": [id or [x,y], ...]}` plus `width` in cells. Edges are `"north" | "south" | "east" | "west"` and mean "run straight off that side of the map". A `path` may start or end with an edge word too.
 - `pillars[]` and `pools[]`: `at`, `r` [rx, ry], optional `rot`. Pillars are rock islands inside a chamber; pools are water on the floor. Both must sit inside a chamber.
+- `lava[]`: like a pool (`at`, `r`) or a flow `{"path": [[x, y], …], "width": 1.5}`; must sit on the floor.
+- `"style": "color"` gives the painted look (dark rock, lit floor, glowing lava and lights).
 - `features[]`: `kind`, `at`, optional `rot` (degrees), `scale` (default 1), `label`, and `"secret": true` (shown only in DM output). Kinds (only these):
-  `boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue`. Most are 1×1 cell; `stairs` and `bedroll` are 1×2, `table` 2×1. Map anything else to the nearest kind (brazier → torch, treasure → chest, corpse → bones, cage → crate, well → pool).
+  `boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue, hoard, pit, crystals, skeleton, spears, sack, cauldron, brazier`. Most are 1×1 cell; `stairs`, `bedroll` and `skeleton` are 1×2, `table` 2×1, `hoard` and `pit` 2×2. Map anything else to the nearest kind (treasure → hoard, corpse → skeleton, cage → crate, well → pool).
 - `roughness` 0.5–2 (wall jaggedness), `rubble` 0–2 (amount of pebbles), `grid` true/false.
 
 Example — user: *"A goblin hideout: a 25-ft entrance cave to the south, a narrow tunnel to a 40-ft den with a pool and loot."*
