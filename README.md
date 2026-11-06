@@ -6,7 +6,7 @@ A dependency-free JavaScript generator that turns a small JSON spec into an SVG 
 
 ## Quick start
 
-**Browser:** open `index.html`, paste or load a spec, download the SVG.
+**Browser:** use it online at <https://whelan.github.io/cave-battlemap-generator/>, or open `index.html` locally (paste or load a spec, download the SVG).
 
 **Node (18+):**
 
