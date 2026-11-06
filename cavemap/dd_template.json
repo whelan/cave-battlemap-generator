@@ -1,0 +1,154 @@
+{
+ "header": {
+  "creation_build": "1.2.0.1 opulent kirin",
+  "creation_date": {
+   "year": 2026,
+   "month": 10,
+   "day": 30,
+   "weekday": 5,
+   "dst": false,
+   "hour": 22,
+   "minute": 6,
+   "second": 49
+  },
+  "uses_default_assets": true,
+  "editor_state": {
+   "current_level": 0,
+   "camera_position": "Vector2( 2688.0, 2432.0 )",
+   "camera_zoom": 4,
+   "guide_position": "null",
+   "trace_image": null,
+   "color_palettes": {
+    "object_custom_colors": [
+     "ff6b3834",
+     "ffac584c",
+     "ff885848",
+     "ffc0866c",
+     "ff8d6d58",
+     "fff3a768",
+     "ff685848",
+     "ff9c8868",
+     "ffae9254",
+     "ffd8c888",
+     "ff888868",
+     "ffaab478",
+     "ff92aa58",
+     "ff87a868",
+     "ff679865",
+     "ff789868",
+     "ff546d56",
+     "ff68887c",
+     "ff667878",
+     "ff809dab",
+     "ff61788d",
+     "ff535869",
+     "ff786878",
+     "ff886878",
+     "ff905868",
+     "ff994858",
+     "ffd8d8d8",
+     "ff8a8a8a",
+     "ff585858",
+     "ff282828"
+    ],
+    "scatter_custom_colors": [
+     "ff6b3834",
+     "ffac584c",
+     "ff885848",
+     "ffc0866c",
+     "ff8d6d58",
+     "fff3a768",
+     "ff685848",
+     "ff9c8868",
+     "ffae9254",
+     "ffd8c888",
+     "ff888868",
+     "ffaab478",
+     "ff92aa58",
+     "ff87a868",
+     "ff679865",
+     "ff789868",
+     "ff546d56",
+     "ff68887c",
+     "ff667878",
+     "ff809dab",
+     "ff61788d",
+     "ff535869",
+     "ff786878",
+     "ff886878",
+     "ff905868",
+     "ff994858",
+     "ffd8d8d8",
+     "ff8a8a8a",
+     "ff585858",
+     "ff282828"
+    ],
+    "light_colors": [
+     "ffeccd8b",
+     "ffeaefca",
+     "ff80beff",
+     "ffffad58",
+     "ff4dd569"
+    ],
+    "grid_colors": [
+     "7fffffff",
+     "7fcccccc",
+     "7f333333",
+     "7f000000"
+    ],
+    "deep_water_colors": [
+     "ff3aa19a",
+     "ff8bceb0",
+     "ffffcc55",
+     "ff3c8ab8"
+    ],
+    "shallow_water_colors": [
+     "ff3ac3b2",
+     "ff8bceb0",
+     "ffcc5555",
+     "ff54c1da"
+    ],
+    "cave_ground_colors": [
+     "ff7f7e71"
+    ],
+    "cave_wall_colors": [
+     "ff7f7e71"
+    ]
+   },
+   "object_tags_memory": {
+    "set": 0,
+    "tags": []
+   },
+   "scatter_tags_memory": {
+    "set": 0,
+    "tags": []
+   },
+   "object_library_memory": null,
+   "scatter_library_memory": null,
+   "path_library_memory": null,
+   "sharpen_fonts": true
+  }
+ },
+ "world": {
+  "format": 3,
+  "width": 21,
+  "height": 19,
+  "next_node_id": "127",
+  "next_prefab_id": "0",
+  "msi": {
+   "offset_map_size": 512,
+   "max_offset_distance": 0.2,
+   "cell_size": 64,
+   "seed": "f06ed3a5"
+  },
+  "grid": {
+   "color": "7f000000",
+   "texture": "res://textures/grid/dotted_line.png"
+  },
+  "building_wear": null,
+  "wall_shadow": true,
+  "object_shadow": true,
+  "trace_image_visible": false,
+  "embedded": {}
+ }
+}

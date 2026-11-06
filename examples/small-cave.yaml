@@ -1,0 +1,19 @@
+# The smallest useful cave: two chambers, a way in, a pool, a camp. Used by the tests.
+name: Small Cave
+size: [20, 16]
+seed: 7
+chambers:
+  - {id: mouth, at: [5, 10], r: [3.5, 3], label: A}
+  - {id: back, at: [14, 6], r: [4, 3.2], label: B}
+passages:
+  - {from: mouth, to: south, width: 3}
+  - {path: [mouth, [9, 8], back], width: 2.6}
+pillars:
+  - {at: [15.8, 7.6], r: [1, 0.7]}
+pools:
+  - {at: [16, 5], r: [1.4, 1]}
+features:
+  - {kind: camp, at: [4, 9], rot: 0}
+  - {kind: trap, at: [5, 14], label: T}
+glow:
+  - {at: [11.5, 4.4], n: 6, color: teal}
