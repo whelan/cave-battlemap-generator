@@ -14,6 +14,7 @@ A dependency-free JavaScript generator that turns a small JSON spec into an SVG 
 node cli.mjs examples/small-cave.json small-cave.svg            # player map
 node cli.mjs examples/dragon-lair.json lair-dm.svg --dm         # DM map: labels, traps, secrets
 node cli.mjs examples/small-cave.json out.svg --no-grid --px 100
+node cli.mjs examples/dragon-lair.json lair.svg --color              # painted colour style
 node cli.mjs --assets assets/                                   # write every asset as its own SVG
 node --test                                                     # run the tests
 ```
@@ -22,6 +23,7 @@ node --test                                                     # run the tests
 |---|---|
 | `--dm` | include labels, traps and `"secret": true` features |
 | `--no-grid` | omit the 5-ft grid |
+| `--color` / `--ink` | painted colour style / black ink style (default: spec `style`, else ink) |
 | `--px N` | pixels per cell (default 70) |
 
 ## The spec

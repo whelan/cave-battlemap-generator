@@ -17,6 +17,7 @@ A spec is one JSON object. All positions and sizes are in **grid cells** (1 cell
 | `roughness` | number | `1` | Wall jaggedness (0.5 smooth-ish … 2 very ragged). |
 | `rubble` | number | `1` | Amount of pebbles along the wall foot (0 = none). |
 | `grid` | boolean | `true` | Draw the 5-ft grid (clipped to the floor). CLI `--no-grid` overrides. |
+| `style` | string | `"ink"` | `"ink"` = black line drawing; `"color"` = painted look: dark rock, lit grey floor, soft shadows, warm light around campfires/torches/altars, tinted water and props. CLI `--color`/`--ink` and the web page selector override. |
 
 ## chambers[]
 

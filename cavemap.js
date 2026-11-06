@@ -128,6 +128,7 @@ function normalize(spec) {
   s.roughness = typeof spec.roughness === 'number' ? Math.max(0, spec.roughness) : 1;
   s.rubble = typeof spec.rubble === 'number' ? Math.max(0, spec.rubble) : 1;
   s.grid = spec.grid !== false;
+  s.style = spec.style === 'color' ? 'color' : 'ink';
 
   const ids = new Map();
   (spec.chambers || []).forEach((c, i) => {
@@ -839,6 +840,10 @@ export function renderCave(spec, opts = {}) {
     gridOut = `<g id="grid" clip-path="url(#cm-floor)" stroke="${INK}" stroke-opacity="0.25" stroke-width="${lw(1)}">${g}</g>`;
   }
 
+  if ((opts.style ?? s.style) === 'color') {
+    return colorSvg({ s, F, S, lw, floorD, wallD, loops, stoneD, crackD, dotD, poolFill, poolOut, featOut, dmOut, gridOut, used, dm });
+  }
+
   // --- assemble
   const defs = [...used].map((k) => `<g id="cm-${k}">${ASSETS[k].svg}</g>`).join('');
   const w = W * S, h = H * S;
@@ -865,6 +870,86 @@ export function renderCave(spec, opts = {}) {
   o.push(`<path id="wall" d="${wallD}" fill="${INK}" fill-rule="nonzero"/>`);
   if (featOut) o.push(`<g id="features">${featOut}</g>`);
   if (dmOut) o.push(`<g id="dm">${dmOut}</g>`);
+  o.push(`</svg>`);
+  return o.join('\n') + '\n';
+}
+
+// --- painted colour style: dark rock, lit grey floor, soft shadows and warm light
+const PAL = {
+  void: '#16171c', haze: '#4a4846', floor: '#77726c', floorDark: '#5d5955', wall: '#1d1b1a',
+  contour: '#2a2725', stone: '#8d8984', stoneLine: '#2e2b29', water: '#3d5866', waterLine: '#a9c3cc',
+  asset: '#a8987f', assetLine: '#211e1b', light: '#ffb45a',
+};
+const LIGHTS = { campfire: 3.2, torch: 2.2, altar: 1.4 };
+
+function colorSvg(c) {
+  const { s, F, S, lw, floorD, wallD, loops, dm } = c;
+  const { W, H, seed } = s;
+  const w = W * S, h = H * S;
+  // extra continuous contour lines in the rock just outside the wall
+  let ringD = '';
+  [0.09, 0.2, 0.34].forEach((off, li) => {
+    const wob = makeNoise(W, H, 0.8, seed, 70 + li);
+    const g2 = new Float64Array(F.g.length);
+    for (let j = 0; j < F.ny; j++)
+      for (let i = 0; i < F.nx; i++) {
+        const k = j * F.nx + i;
+        g2[k] = F.g[k] + 0.035 * (li + 1) * wob(F.x0 + i * F.step, F.y0 + j * F.step);
+      }
+    for (const c0 of contours(F, off, g2)) {
+      const cc = chaikin(simplify(c0, 0.03));
+      if (cc.pts.length > 3) ringD += polyD(cc.pts, cc.closed, S);
+    }
+  });
+  // lights
+  let lightOut = '';
+  const R = rng(seed, 'light');
+  for (const f of s.features) {
+    if (f.dmOnly && !dm) continue;
+    const r = LIGHTS[f.kind];
+    if (!r) continue;
+    const rr = r * f.scale * S * (0.9 + 0.2 * R());
+    lightOut += `<circle cx="${f1(f.at[0] * S)}" cy="${f1(f.at[1] * S)}" r="${f1(rr)}" fill="url(#cm-light)"/>`;
+  }
+  const tint = (svg) => svg.replace(/#fff\b|#ffffff\b|white/gi, PAL.asset).replace(/#000\b|#000000\b|black/gi, PAL.assetLine);
+  const defs = [...c.used].map((k) => `<g id="cm-${k}">${tint(ASSETS[k].svg)}</g>`).join('');
+  const blur = (id, sd) => `<filter id="${id}" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="${f1(sd)}"/></filter>`;
+  const o = [];
+  o.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f1(w)} ${f1(h)}" width="${f1(w)}" height="${f1(h)}">`);
+  o.push(`<title>${esc(s.name)}</title>`);
+  o.push(`<defs><clipPath id="cm-floor"><path d="${floorD}" clip-rule="evenodd"/></clipPath>`);
+  o.push(blur('cm-haze', 0.55 * S) + blur('cm-shade', 0.22 * S) + blur('cm-soft', 0.04 * S));
+  o.push(`<filter id="cm-mottle" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${f2(0.7 / S)}" numOctaves="5" seed="${seed % 1000}"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 0.95"/></filter>`);
+  o.push(`<filter id="cm-grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="${f2(9 / S)}" numOctaves="2" seed="${(seed + 7) % 1000}"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.2 1.2"/></filter>`);
+  o.push(`<radialGradient id="cm-light"><stop offset="0" stop-color="${PAL.light}" stop-opacity="0.75"/><stop offset="0.45" stop-color="${PAL.light}" stop-opacity="0.3"/><stop offset="1" stop-color="${PAL.light}" stop-opacity="0"/></radialGradient>`);
+  o.push(`${defs}</defs>`);
+  o.push(`<rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.void}"/>`);
+  // soft lighter haze in the rock around the cave
+  o.push(`<path d="${floorD}" fill="${PAL.haze}" stroke="${PAL.haze}" stroke-width="${f1(1.4 * S)}" stroke-linejoin="round" filter="url(#cm-haze)" opacity="0.85"/>`);
+  o.push(`<path d="${ringD}" fill="none" stroke="${PAL.contour}" stroke-width="${lw(1.6)}" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>`);
+  // floor
+  o.push(`<g clip-path="url(#cm-floor)">`);
+  o.push(`<rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.floor}"/>`);
+  o.push(`<rect width="${f1(w)}" height="${f1(h)}" fill="${PAL.floorDark}" filter="url(#cm-mottle)" opacity="0.5"/>`);
+  o.push(`<rect width="${f1(w)}" height="${f1(h)}" filter="url(#cm-grain)" opacity="0.06"/>`);
+  o.push(`<path d="${wallD}" fill="none" stroke="#000" stroke-width="${f1(0.55 * S)}" stroke-linejoin="round" filter="url(#cm-shade)" opacity="0.55"/>`);
+  if (lightOut) o.push(`<g style="mix-blend-mode:screen">${lightOut}</g>`);
+  o.push(`<g fill="none" stroke="${PAL.stoneLine}" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">`);
+  if (c.crackD) o.push(`<path d="${c.crackD}" stroke-width="${lw(1)}" opacity="0.6"/>`);
+  if (c.dotD) o.push(`<path d="${c.dotD}" stroke-width="${lw(2.4)}"/>`);
+  if (c.stoneD) o.push(`<path d="${c.stoneD}" fill="${PAL.stone}" stroke-width="${lw(1.2)}"/>`);
+  o.push(`</g>`);
+  if (c.poolFill) {
+    o.push(`<path d="${c.poolFill}" fill="none" stroke="#000" stroke-width="${f1(0.3 * S)}" filter="url(#cm-shade)" opacity="0.5"/>`);
+    o.push(`<path d="${c.poolFill}" fill="${PAL.water}" opacity="0.95"/>`);
+    o.push(`<g fill="none" stroke="${PAL.waterLine}" stroke-linecap="round" stroke-linejoin="round" opacity="0.6">${c.poolOut}</g>`);
+  }
+  o.push(`</g>`);
+  if (c.gridOut) o.push(c.gridOut.replace(`stroke="${INK}" stroke-opacity="0.25"`, `stroke="#000" stroke-opacity="0.3"`));
+  // wall: dark band with a soft shadow line
+  o.push(`<path d="${wallD}" fill="${PAL.wall}" fill-rule="nonzero" filter="url(#cm-soft)"/>`);
+  if (c.featOut) o.push(`<g id="features" style="filter:drop-shadow(0 ${f1(0.04 * S)}px ${f1(0.05 * S)}px rgba(0,0,0,0.6))">${c.featOut}</g>`);
+  if (c.dmOut) o.push(`<g id="dm">${c.dmOut}</g>`);
   o.push(`</svg>`);
   return o.join('\n') + '\n';
 }

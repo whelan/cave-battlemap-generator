@@ -120,3 +120,13 @@ test('every asset exists and renders standalone and on a map', () => {
   wellFormed(svg);
   for (const name of NAMES) assert.ok(svg.includes(`id="cm-${name}"`), name);
 });
+
+test('color style renders a painted map', async () => {
+  const { renderCave } = await import('../cavemap.js');
+  const spec = { name: 'C', size: [12, 10], seed: 3, chambers: [{ id: 'a', at: [6, 5], r: [3, 2.5] }], pools: [{ at: [7, 5], r: [1, 0.8] }], features: [{ kind: 'campfire', at: [5, 5] }] };
+  const svg = renderCave(spec, { style: 'color' });
+  assert.match(svg, /cm-light/);
+  assert.match(svg, /feTurbulence/);
+  assert.doesNotMatch(renderCave(spec), /feTurbulence/);
+  assert.equal(renderCave({ ...spec, style: 'color' }), svg);
+});
