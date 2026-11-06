@@ -14,6 +14,7 @@ A dependency-free JavaScript generator that turns a small JSON spec into an SVG 
 node cli.mjs examples/small-cave.json small-cave.svg            # player map
 node cli.mjs examples/dragon-lair.json lair-dm.svg --dm         # DM map: labels, traps, secrets
 node cli.mjs examples/small-cave.json out.svg --no-grid --px 100
+node cli.mjs examples/dragon-lair.json lair.svg --color              # painted colour style
 node cli.mjs --assets assets/                                   # write every asset as its own SVG
 node --test                                                     # run the tests
 ```
@@ -22,6 +23,7 @@ node --test                                                     # run the tests
 |---|---|
 | `--dm` | include labels, traps and `"secret": true` features |
 | `--no-grid` | omit the 5-ft grid |
+| `--color` / `--ink` | painted colour style / black ink style (default: spec `style`, else ink) |
 | `--px N` | pixels per cell (default 70) |
 
 ## The spec
@@ -38,7 +40,7 @@ Units are grid cells (1 cell = 5 ft). A cave is a list of elliptical **chambers*
   "features": [{"kind": "campfire", "at": [4, 9]}, {"kind": "trap", "at": [5, 14], "label": "T"}] }
 ```
 
-Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md). Examples: [examples/small-cave.json](examples/small-cave.json), [examples/dragon-lair.json](examples/dragon-lair.json).
+Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md). Examples: [examples/small-cave.json](examples/small-cave.json), [examples/dragon-lair.json](examples/dragon-lair.json), [examples/lava-cave.json](examples/lava-cave.json) (lava + colour style).
 
 ## Use with an AI
 
@@ -49,7 +51,7 @@ Full field and asset reference: [docs/spec-reference.md](docs/spec-reference.md)
 
 ## Assets
 
-23 simple line-drawn props, each sized to the 5-ft grid: boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue. Use them as `features` in a spec, or export them with `--assets` for use in other tools.
+31 simple props, each sized to the 5-ft grid: boulder, rocks, rubble, stalagmite, pillar, mushrooms, bones, skull, campfire, bedroll, chest, crate, barrel, table, chair, torch, stairs, door, ladder, web, trap, altar, statue, hoard, pit, crystals, skeleton, spears, sack, cauldron, brazier. Campfires, torches, braziers, altars, crystals and cauldrons cast light in the colour style. Use them as `features` in a spec, or export them with `--assets` for use in other tools.
 
 ![Assets](docs/images/assets.png)
 

@@ -103,7 +103,8 @@ test('validate: malformed specs report errors and renderCave throws', () => {
 });
 
 const NAMES = ['boulder', 'rocks', 'rubble', 'stalagmite', 'pillar', 'mushrooms', 'bones', 'skull', 'campfire', 'bedroll', 'chest',
-  'crate', 'barrel', 'table', 'chair', 'torch', 'stairs', 'door', 'ladder', 'web', 'trap', 'altar', 'statue'];
+  'crate', 'barrel', 'table', 'chair', 'torch', 'stairs', 'door', 'ladder', 'web', 'trap', 'altar', 'statue',
+  'hoard', 'pit', 'crystals', 'skeleton', 'spears', 'sack', 'cauldron', 'brazier'];
 
 test('every asset exists and renders standalone and on a map', () => {
   assert.deepEqual(Object.keys(ASSETS).sort(), [...NAMES].sort());
@@ -119,4 +120,24 @@ test('every asset exists and renders standalone and on a map', () => {
   const svg = renderCave(spec, { dm: true });
   wellFormed(svg);
   for (const name of NAMES) assert.ok(svg.includes(`id="cm-${name}"`), name);
+});
+
+test('color style renders a painted map', async () => {
+  const { renderCave } = await import('../cavemap.js');
+  const spec = { name: 'C', size: [12, 10], seed: 3, chambers: [{ id: 'a', at: [6, 5], r: [3, 2.5] }], pools: [{ at: [7, 5], r: [1, 0.8] }], features: [{ kind: 'campfire', at: [5, 5] }] };
+  const svg = renderCave(spec, { style: 'color' });
+  assert.match(svg, /cm-light/);
+  assert.match(svg, /feTurbulence/);
+  assert.doesNotMatch(renderCave(spec), /feTurbulence/);
+  assert.equal(renderCave({ ...spec, style: 'color' }), svg);
+});
+
+test('lava renders in both styles and is validated', () => {
+  const spec = { ...structuredClone(SPEC), lava: [{ path: [[3, 9], [6, 11]], width: 1.2 }, { at: [14, 6], r: [1, 0.8] }] };
+  for (const style of ['ink', 'color']) {
+    const svg = renderCave(spec, { style });
+    wellFormed(svg);
+    assert.match(svg, style === 'ink' ? /id="lava"/ : /cm-lava/);
+  }
+  assert.ok(validate({ ...SPEC, lava: [{ path: [[1, 1]] }] }).errors.some((e) => /lava/.test(e)));
 });

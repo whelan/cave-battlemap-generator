@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// node cli.mjs spec.json [out.svg] [--dm] [--no-grid] [--px 70]
+// node cli.mjs spec.json [out.svg] [--dm] [--no-grid] [--px 70] [--color|--ink]
 // node cli.mjs --assets assets/
 import fs from 'node:fs';
 import path from 'node:path';
 import { renderCave, validate, ASSETS, assetSvg } from './cavemap.js';
 
 const USAGE = `usage:
-  node cli.mjs spec.json [out.svg] [--dm] [--no-grid] [--px 70]
+  node cli.mjs spec.json [out.svg] [--dm] [--no-grid] [--px 70] [--color|--ink]
   node cli.mjs --assets DIR`;
 
 const args = process.argv.slice(2);
@@ -17,6 +17,8 @@ for (let i = 0; i < args.length; i++) {
   if (a === '--dm') flags.dm = true;
   else if (a === '--no-grid') flags.grid = false;
   else if (a === '--px') flags.px = Number(args[++i]);
+  else if (a === '--color') flags.style = 'color';
+  else if (a === '--ink') flags.style = 'ink';
   else if (a === '--assets') flags.assets = args[++i] || 'assets';
   else if (a === '-h' || a === '--help') {
     console.log(USAGE);
@@ -58,7 +60,7 @@ for (const w of qa.warnings) console.log(`WARN ${w}`);
 
 let ok = true;
 try {
-  const svg = renderCave(spec, { dm: flags.dm, grid: flags.grid, px: flags.px });
+  const svg = renderCave(spec, { dm: flags.dm, grid: flags.grid, px: flags.px, style: flags.style });
   const out = pos[1] || specPath.replace(/\.json$/i, '') + (flags.dm ? '-dm' : '') + '.svg';
   fs.writeFileSync(out, svg);
   console.log(`wrote ${out} (${Math.round(svg.length / 1024)} KB)`);

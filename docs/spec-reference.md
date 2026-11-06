@@ -13,10 +13,12 @@ A spec is one JSON object. All positions and sizes are in **grid cells** (1 cell
 | `passages` | array | `[]` | Tunnels between chambers, points or map edges. |
 | `pillars` | array | `[]` | Rock islands inside the floor. |
 | `pools` | array | `[]` | Water drawn on the floor. |
+| `lava` | array | `[]` | Lava pools or flows drawn on the floor (glows in the colour style). |
 | `features` | array | `[]` | Assets placed on the map. |
 | `roughness` | number | `1` | Wall jaggedness (0.5 smooth-ish … 2 very ragged). |
 | `rubble` | number | `1` | Amount of pebbles along the wall foot (0 = none). |
 | `grid` | boolean | `true` | Draw the 5-ft grid (clipped to the floor). CLI `--no-grid` overrides. |
+| `style` | string | `"ink"` | `"ink"` = black line drawing; `"color"` = painted look: dark rock, lit grey floor, soft shadows, warm light around campfires/torches/altars, tinted water and props. CLI `--color`/`--ink` and the web page selector override. |
 
 ## chambers[]
 
@@ -45,6 +47,15 @@ Either form, plus `width`:
 | `at` | `[x, y]` | Centre (should be on floor). |
 | `r` | `[rx, ry]` | Radii in cells. |
 | `rot` | number | Optional rotation in degrees. |
+
+## lava[]
+
+Either a pool like `pools[]` (`at`, `r`, optional `rot`) or a flow along a path:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `path` | `[[x, y], …]` | 2+ points the flow follows. |
+| `width` | number | Flow width in cells (default 1.5). |
 
 ## features[]
 
@@ -88,6 +99,14 @@ Nominal footprint at `scale: 1` (cells, width × height before rotation). Each i
 | `trap` | 1×1 | Dashed square with X (DM only). |
 | `altar` | 2×1 | Stone block with top slab. |
 | `statue` | 1×1 | Plinth with figure outline. |
+| `hoard` | 2×2 | Treasure pile: coins, gems, goblet. |
+| `pit` | 2×2 | Dark hole with a rocky rim. |
+| `crystals` | 1×1 | Cluster of crystal shards (red glow in colour). |
+| `skeleton` | 1×2 | Full skeleton lying down. |
+| `spears` | 1×1 | Two spears. |
+| `sack` | 1×1 | Tied sack. |
+| `cauldron` | 1×1 | Cauldron on three legs (green glow in colour). |
+| `brazier` | 1×1 | Fire bowl (casts light). |
 
 ## QA
 

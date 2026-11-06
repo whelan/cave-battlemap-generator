@@ -25,6 +25,7 @@
 <body>
 <header>
   <h1>Cave Battlemap Generator</h1>
+  <label>style <select id="style"><option value="color" selected>painted (colour)</option><option value="ink">ink</option></select></label>
   <label><input type="checkbox" id="grid" checked> grid</label>
   <label><input type="checkbox" id="dm"> DM layer</label>
   <label>px/cell <input type="number" id="px" value="70" min="10" max="300"></label>
@@ -81,7 +82,7 @@ function update() {
   lines.push(`QA ${name}: ${errors.length} FAIL, ${warnings.length} WARN`);
   qa.innerHTML = lines.join('\n');
   try {
-    svg = renderCave(spec, { dm: $('dm').checked, grid: $('grid').checked, px: Number($('px').value) || 70 });
+    svg = renderCave(spec, { dm: $('dm').checked, grid: $('grid').checked, px: Number($('px').value) || 70, style: $('style').value });
     $('preview').innerHTML = svg;
   } catch (e) { qa.innerHTML += `\n<span class="fail">${e.message.replace(/</g, '&lt;')}</span>`; }
 }
@@ -97,7 +98,7 @@ function download(blob, file) {
 }
 
 $('spec').addEventListener('input', schedule);
-for (const id of ['grid', 'dm', 'px']) $(id).addEventListener('change', update);
+for (const id of ['style', 'grid', 'dm', 'px']) $(id).addEventListener('change', update);
 $('svgBtn').onclick = () => svg && download(new Blob([svg], { type: 'image/svg+xml' }), `${slug(name)}${$('dm').checked ? '-dm' : ''}.svg`);
 $('pngBtn').onclick = () => {
   if (!svg) return;
