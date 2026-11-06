@@ -1,0 +1,15 @@
+{
+  "name": "cave-battlemap-generator",
+  "version": "1.0.0",
+  "description": "Dependency-free cave battlemap generator: JSON spec in, ink line-drawing SVG out.",
+  "type": "module",
+  "main": "cavemap.js",
+  "bin": { "cavemap": "cli.mjs" },
+  "scripts": {
+    "test": "node --test",
+    "render": "node cli.mjs examples/small-cave.json small-cave.svg",
+    "assets": "node cli.mjs --assets assets/"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

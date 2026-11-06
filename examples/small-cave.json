@@ -1,0 +1,25 @@
+{
+  "name": "Small Cave",
+  "size": [20, 16],
+  "seed": 7,
+  "chambers": [
+    { "id": "mouth", "at": [5, 10], "r": [3.5, 3], "rot": 0, "label": "A" },
+    { "id": "back", "at": [14, 6], "r": [4, 3.2], "rot": 0, "label": "B" }
+  ],
+  "passages": [
+    { "from": "mouth", "to": "south", "width": 3 },
+    { "path": ["mouth", [9, 8], "back"], "width": 2.6 }
+  ],
+  "pillars": [{ "at": [15.8, 7.6], "r": [1, 0.7] }],
+  "pools": [{ "at": [16, 5], "r": [1.4, 1] }],
+  "features": [
+    { "kind": "campfire", "at": [4, 9], "rot": 0, "scale": 1 },
+    { "kind": "bedroll", "at": [2.8, 10.6], "rot": 80 },
+    { "kind": "trap", "at": [5, 14], "label": "T" },
+    { "kind": "rocks", "at": [12, 4] },
+    { "kind": "chest", "at": [17.5, 7], "rot": -15, "label": "1" }
+  ],
+  "roughness": 1,
+  "rubble": 1,
+  "grid": true
+}

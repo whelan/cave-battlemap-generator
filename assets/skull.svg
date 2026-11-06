@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="50" height="50">
+<title>skull</title>
+<g fill="#fff" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="25" cy="21" rx="18.4" ry="17.4" fill="#000"/><rect x="12.6" y="24.6" width="24.8" height="20.8" rx="5" fill="#000"/><ellipse cx="25" cy="21" rx="16" ry="15" fill="#fff"/><rect x="15" y="27" width="20" height="16" rx="5" fill="#fff"/><ellipse cx="19" cy="24" rx="4.5" ry="5" fill="#000" stroke="none"/><ellipse cx="31" cy="24" rx="4.5" ry="5" fill="#000" stroke="none"/><path d="M25 29L22.5 34H27.5Z" fill="#000" stroke-width="1"/><path d="M19 37L19 42" fill="none"/><path d="M23 37.5L23 42.5" fill="none"/><path d="M27 37.5L27 42.5" fill="none"/><path d="M31 37L31 42" fill="none"/><path d="M16 37L34 37" fill="none"/></g>
+</svg>
