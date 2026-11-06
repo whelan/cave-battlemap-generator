@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cave Battlemap Generator</title>
+<style>
+  :root { --ink: #111; --paper: #fff; --muted: #666; --line: #ccc; --bad: #b00020; --warn: #8a5a00; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; color: var(--ink); background: #f4f4f2; }
+  header { padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; border-bottom: 1px solid var(--line); background: var(--paper); }
+  header h1 { font: bold 18px Georgia, serif; margin: 0 12px 0 0; }
+  main { display: grid; grid-template-columns: minmax(280px, 400px) 1fr; gap: 12px; padding: 12px 16px; height: calc(100vh - 52px); }
+  textarea { width: 100%; height: calc(100% - 90px); font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; padding: 8px; border: 1px solid var(--line); border-radius: 4px; resize: none; }
+  #qa { font: 12px ui-monospace, monospace; margin-top: 6px; max-height: 80px; overflow: auto; white-space: pre-wrap; }
+  #qa .fail { color: var(--bad); } #qa .warn { color: var(--warn); }
+  #preview { overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; }
+  #preview svg { display: block; max-width: 100%; height: auto; }
+  button { font: inherit; padding: 4px 10px; border: 1px solid var(--ink); background: var(--paper); border-radius: 3px; cursor: pointer; }
+  label { user-select: none; }
+  input[type=number] { width: 60px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; height: auto; } textarea { height: 320px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Cave Battlemap Generator</h1>
+  <label><input type="checkbox" id="grid" checked> grid</label>
+  <label><input type="checkbox" id="dm"> DM layer</label>
+  <label>px/cell <input type="number" id="px" value="70" min="10" max="300"></label>
+  <button id="svgBtn">Download SVG</button>
+  <button id="pngBtn">Download PNG</button>
+</header>
+<main>
+  <section>
+    <textarea id="spec" spellcheck="false">{
+  "name": "Small Cave",
+  "size": [20, 16],
+  "seed": 7,
+  "chambers": [
+    { "id": "mouth", "at": [5, 10], "r": [3.5, 3], "rot": 0, "label": "A" },
+    { "id": "back", "at": [14, 6], "r": [4, 3.2], "rot": 0, "label": "B" }
+  ],
+  "passages": [
+    { "from": "mouth", "to": "south", "width": 3 },
+    { "path": ["mouth", [9, 8], "back"], "width": 2.6 }
+  ],
+  "pillars": [{ "at": [15.8, 7.6], "r": [1, 0.7] }],
+  "pools": [{ "at": [16, 5], "r": [1.4, 1] }],
+  "features": [
+    { "kind": "campfire", "at": [4, 9] },
+    { "kind": "bedroll", "at": [2.8, 10.6], "rot": 80 },
+    { "kind": "trap", "at": [5, 14], "label": "T" },
+    { "kind": "rocks", "at": [12, 4] },
+    { "kind": "chest", "at": [17.5, 7], "rot": -15, "label": "1" }
+  ],
+  "roughness": 1,
+  "rubble": 1,
+  "grid": true
+}</textarea>
+    <div id="qa"></div>
+  </section>
+  <section id="preview"></section>
+</main>
+<script type="module">
+import { renderCave, validate } from './cavemap.js';
+
+const $ = (id) => document.getElementById(id);
+let svg = '', name = 'cave', timer = 0;
+
+function slug(s) { return String(s || 'cave').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cave'; }
+
+function update() {
+  const qa = $('qa');
+  let spec;
+  try { spec = JSON.parse($('spec').value); }
+  catch (e) { qa.innerHTML = `<span class="fail">JSON: ${e.message}</span>`; return; }
+  const { errors, warnings } = validate(spec);
+  name = spec.name || 'Cave';
+  const lines = [...errors.map((e) => `<span class="fail">FAIL ${e}</span>`), ...warnings.map((w) => `<span class="warn">WARN ${w}</span>`)];
+  lines.push(`QA ${name}: ${errors.length} FAIL, ${warnings.length} WARN`);
+  qa.innerHTML = lines.join('\n');
+  try {
+    svg = renderCave(spec, { dm: $('dm').checked, grid: $('grid').checked, px: Number($('px').value) || 70 });
+    $('preview').innerHTML = svg;
+  } catch (e) { qa.innerHTML += `\n<span class="fail">${e.message.replace(/</g, '&lt;')}</span>`; }
+}
+
+function schedule() { clearTimeout(timer); timer = setTimeout(update, 300); }
+
+function download(blob, file) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = file;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('spec').addEventListener('input', schedule);
+for (const id of ['grid', 'dm', 'px']) $(id).addEventListener('change', update);
+$('svgBtn').onclick = () => svg && download(new Blob([svg], { type: 'image/svg+xml' }), `${slug(name)}${$('dm').checked ? '-dm' : ''}.svg`);
+$('pngBtn').onclick = () => {
+  if (!svg) return;
+  const m = svg.match(/width="([\d.]+)" height="([\d.]+)"/);
+  const img = new Image();
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = Math.round(+m[1]);
+    c.height = Math.round(+m[2]);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    c.toBlob((b) => download(b, `${slug(name)}${$('dm').checked ? '-dm' : ''}.png`), 'image/png');
+  };
+  img.src = url;
+};
+update();
+</script>
+</body>
+</html>
